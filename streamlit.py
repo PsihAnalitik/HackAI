@@ -7,7 +7,8 @@ import torch
 from torch import nn
 import io
 
-
+from app.packet_processing import packet_app
+from app.showcase import alone_app
 
 #@st.cache(allow_output_mutation=True)
 def get_image_path(image_folder, image_name):
@@ -75,52 +76,6 @@ def Algorithm(img):
     probab = list(ps.numpy()[0])
     return str(probab.index(max(probab)))
 
-
-def app(folder_path):
-    image_extensions = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp"]
-    num_images = sum(1 for f in os.listdir(folder_path) if f.lower().endswith(tuple(image_extensions)) and os.path.isfile(os.path.join(folder_path, f)))
-
-    st.title("Сохранение результатов работы модели")
-    count = 0
-    progress_bar = st.progress(count)
-    for filename in os.listdir(folder_path):
-            img_path = os.path.join(folder_path, filename)
-            image = preprocess_image(img_path)
-            label = filename
-            if image is not None:
-                    transform = transforms.ToPILImage()
-                    image = transform(image)
-                    #st.image(image, caption=f"Saved_img{iter}", use_column_width=True)
-                    folder_name = '/res/' + str(Algorithm(image)) # Our classifier solution
-                    filename = f"{label}"
-                    #st.success(f"picture folder: {folder_name}, {label}")
-                    save_image_locally(folder_name, folder_path+'/'+filename, filename)
-                    count +=1
-                    if (count) / num_images <=1:
-                        progress_bar.progress((count) / num_images)
-
-    st.success(f"Количество изображений: {count}. Путь к результатам: {os.getcwd() + '/res'}")
-    return
-
-def alone_app(path):
-    if path is not None:
-        transform = transforms.ToPILImage()
-        image = preprocess_image(path)
-        image = transform(image)
-        st.image(image, caption=f"Image", use_column_width=True)
-        claster = Algorithm(image) # Our classifier solution
-        folder_name = '/res/' + str(claster) 
-        filename = f"{claster}"
-        st.success(f"picture class: {claster}")
-        file_name = path.name
-        file_path = os.path.join(folder_name, file_name)
-        file_path = f"./{file_path}"
-        if not os.path.exists(file_path):
-            os.makedirs(file_path)
-        image.save(file_path)
-        st.success(f"Путь к результатам: {os.getcwd() + '/res'}")
-    st.write("Укажите правильный путь к файлу!")
-
 def clear_folder(folder_path):
     for filename in os.listdir(folder_path):
         file_path = os.path.join(folder_path, filename)
@@ -131,34 +86,36 @@ def clear_folder(folder_path):
             print(f"Ошибка при удалении файла {file_path}: {e}")
 
 def main():
-    SAVE_FOLDER = [f"./{i}" for i in range(10)]
-
-    transform = transforms.Compose([transforms.ToTensor(),
-                              transforms.Normalize((0.5,), (0.5,)),
-                              ])
-    #df = 'mnist_data_test/images'
-    df = None
     uploaded_file = st.file_uploader("Upload your file here...", type=['png', 'jpeg', 'jpg'])
 
     if uploaded_file is not None:
-        alone_app(uploaded_file)
+        # Process demo case for one image
+        show_boundaries = False
+        if st.checkbox('Показать животных на снимке'):
+            show_boundaries = True
+        alone_app(uploaded_file, show_boundaries)
 
     container = st.container()
     container.markdown("## Классификатор изображений")
-    path = container.text_input("Абсолютный путь к папке датасета")
-    button_clicked = container.button("Указать путь")
+    container.markdown("Внимание: поддерживаются только следующие форматы - jpg, jpeg, png")
+    load_path = container.text_input("Укажите абсолютный путь к папке, в которой содержатся снимки в формате")
+    save_path = container.text_input("Укажите абсолютный путь к папке, в которую вы хотите сложить отсортированные снимки")
+    button_clicked = container.button("Подтвердить")
+    save_csv = False
+    if container.checkbox('Сохранить результаты в .csv файл'):
+        save_csv = True
     if button_clicked:
-        df = path
-        st.success(f"{path} and {df}" )
-        if len(df) >0:
-                app(df)
+        if os.path.isdir(load_path) and os.path.isdir(save_path):
+            result_dataframe = packet_app(load_path, save_path)
+            if save_csv:
+                result_dataframe = result_dataframe.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label='Скачать .csv файл',
+                    data=result_dataframe,
+                    file_name='submission.csv'
+                )
         else:
-                 st.success("Укажите путь к папке", )
-
-    if st.button("Очистить папку"):
-        for folder in SAVE_FOLDER:
-            clear_folder(folder)
-        st.success("Папка успешно очищена")
+            st.error('Указан некорректный путь', icon="🚨")
 
 if __name__ == '__main__':
     main()
