@@ -55,6 +55,5 @@ def packet_app(src_path: str, dst_path: str):
 
     predict_data = pd.DataFrame(data=predict_data, columns=['filename', 'broken', 'empty', 'animal'])
 
-    st.success(f"Путь к результатам: {os.getcwd() + '/res'}. Всего {cl0_cnt} испорченных снимков, {cl1_cnt} пустых снимков, {cl2_cnt} снимков с животными")
-    # TODO: мб отчетик с тем скольлко животных обнаружено
+    st.success(f"Путь к результатам: {dst_path}. Всего {cl0_cnt} испорченных снимков, {cl1_cnt} пустых снимков, {cl2_cnt} снимков с животными")
     return predict_data

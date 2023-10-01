@@ -1,21 +1,27 @@
 import streamlit as st
 import os
+import cv2
+import numpy as np
 
-def alone_app(path):
-    if path is not None:
-        transform = transforms.ToPILImage()
-        image = preprocess_image(path)
-        image = transform(image)
-        st.image(image, caption=f"Image", use_column_width=True)
-        claster = Algorithm(image) # Our classifier solution
-        folder_name = '/res/' + str(claster) 
-        filename = f"{claster}"
-        st.success(f"picture class: {claster}")
-        file_name = path.name
-        file_path = os.path.join(folder_name, file_name)
-        file_path = f"./{file_path}"
-        if not os.path.exists(file_path):
-            os.makedirs(file_path)
-        image.save(file_path)
-        st.success(f"Путь к результатам: {os.getcwd() + '/res'}")
-    st.write("Укажите правильный путь к файлу!")
+from PIL import Image
+
+from src.model.sort_images import SortImageModel
+
+def alone_app(img, show_bounding_box):
+    with open(os.path.join("temporary_files",img.name),"wb") as f:
+        f.write(img.getbuffer())
+    img_path = os.path.join("temporary_files",img.name)
+    model = SortImageModel()
+    prediction = model.predict(img_path)
+    with open(img_path, 'rb') as fd:
+        image = Image.open(fd)
+        if prediction[0] == 1:
+            st.error('Некачественное изображение', icon="🚨")
+            st.image(image)
+        elif prediction[1] == 1:
+            st.warning('Пустое изображение', icon="⚠️")
+            st.image(image)
+        else:
+            st.success('Изображение с животным')
+            result = model.object_detector(image)
+            st.image(result.render(labels=False))
